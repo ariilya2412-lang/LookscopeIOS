@@ -1,0 +1,43 @@
+name: Build LookscopeIOS IPA
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  build-ios:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build unsigned app
+        run: |
+          xcodebuild \
+            -project LookscopeIOS.xcodeproj \
+            -scheme LookscopeIOS \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath build/DerivedData \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build
+
+      - name: Package unsigned IPA
+        run: |
+          APP_PATH="$(find build/DerivedData/Build/Products/Release-iphoneos -maxdepth 1 -name 'LookscopeIOS.app' -type d | head -n 1)"
+          test -n "$APP_PATH"
+          rm -rf build/Payload build/LookscopeIOS-unsigned.ipa
+          mkdir -p build/Payload
+          cp -R "$APP_PATH" build/Payload/
+          (cd build && zip -qry LookscopeIOS-unsigned.ipa Payload)
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: LookscopeIOS-ipa
+          path: build/LookscopeIOS-unsigned.ipa
+          if-no-files-found: error
