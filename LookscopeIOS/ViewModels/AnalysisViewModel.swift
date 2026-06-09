@@ -36,7 +36,15 @@ final class AnalysisViewModel: ObservableObject {
         guard !items.isEmpty else { return }
 
         do {
-            let imported = try await importer.importPhotos(items: items, faceService: faceService)
+            var loadedData: [Data] = []
+            for item in items {
+                guard let data = try await item.loadTransferable(type: Data.self) else {
+                    throw PhotoImportError.loadFailed
+                }
+                loadedData.append(data)
+            }
+
+            let imported = try importer.importPhotos(photoData: loadedData, faceService: faceService)
             let startIndex = photos.count
             let renumbered = imported.enumerated().map { offset, photo in
                 AnalysisPhoto(

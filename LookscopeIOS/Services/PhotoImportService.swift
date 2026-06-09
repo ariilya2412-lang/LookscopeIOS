@@ -1,5 +1,4 @@
 import Foundation
-import PhotosUI
 import UIKit
 
 enum PhotoImportError: LocalizedError {
@@ -20,14 +19,10 @@ enum PhotoImportError: LocalizedError {
 }
 
 struct PhotoImportService {
-    func importPhotos(items: [PhotosPickerItem], faceService: FaceLandmarkService) async throws -> [AnalysisPhoto] {
+    func importPhotos(photoData: [Data], faceService: FaceLandmarkService) throws -> [AnalysisPhoto] {
         var imported: [AnalysisPhoto] = []
 
-        for (index, item) in items.enumerated() {
-            guard let data = try await item.loadTransferable(type: Data.self) else {
-                throw PhotoImportError.loadFailed
-            }
-
+        for (index, data) in photoData.enumerated() {
             let photo = try makePhoto(
                 from: data,
                 label: "Photo \(index + 1)",
