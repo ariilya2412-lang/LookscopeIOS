@@ -1,5 +1,4 @@
 import Foundation
-import PhotosUI
 import UIKit
 
 enum PhotoImportError: LocalizedError {
@@ -20,11 +19,7 @@ enum PhotoImportError: LocalizedError {
 }
 
 struct PhotoImportService {
-    func importPhoto(item: PhotosPickerItem) async throws -> UploadedPhotoAsset {
-        guard let data = try await item.loadTransferable(type: Data.self) else {
-            throw PhotoImportError.loadFailed
-        }
-
+    func importPhoto(data: Data, fileName: String = "portrait") throws -> UploadedPhotoAsset {
         guard let image = UIImage(data: data) else {
             throw PhotoImportError.invalidImage
         }
@@ -32,7 +27,7 @@ struct PhotoImportService {
         let prepared = try prepare(image: image)
         return UploadedPhotoAsset(
             imageData: prepared,
-            fileName: item.itemIdentifier ?? "portrait"
+            fileName: fileName
         )
     }
 

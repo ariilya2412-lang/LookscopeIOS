@@ -68,7 +68,13 @@ final class AscendFlowViewModel: ObservableObject {
         guard let item else { return }
 
         do {
-            let photo = try await photoImportService.importPhoto(item: item)
+            guard let data = try await item.loadTransferable(type: Data.self) else {
+                throw PhotoImportError.loadFailed
+            }
+            let photo = try photoImportService.importPhoto(
+                data: data,
+                fileName: item.itemIdentifier ?? "portrait"
+            )
             selectedPhoto = photo
             importError = nil
             HapticsService.success()
