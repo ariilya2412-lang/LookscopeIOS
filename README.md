@@ -1,18 +1,20 @@
-# LookscopeIOS
+# AscendAI
 
-Native SwiftUI iPhone app for multi-photo face analysis.
+Premium SwiftUI MVP for a dark-mode facial analysis experience.
 
-## Included
+Included in this version:
 
-- Multi-photo import with `PhotosPicker`
-- Local Apple Vision face landmarks
-- AI analysis via Gemini `generateContent`
-- Scan / Reports / Profile tabs
-- Local report history
-- GitHub Actions workflow for unsigned IPA artifacts
+- Onboarding
+- Photo upload with `PhotosUI`
+- Questionnaire
+- Scanning animation
+- Analysis steps
+- Local fallback mock report
+- Paywall placeholder
 
-## Notes
+Not included yet:
 
-- The app can run without AI and will generate a local fallback report.
-- To use Gemini directly in the app, add your API key in the Profile tab.
-- For a production release, move the API key to your own backend.
+- Gemini API
+- Real AI analysis
+- StoreKit
+- Third-party libraries
