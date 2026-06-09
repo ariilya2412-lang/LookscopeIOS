@@ -1,0 +1,5 @@
+{
+  "gemini_api_key": "PASTE_YOUR_GEMINI_KEY_HERE",
+  "google_project_id": "PASTE_YOUR_GOOGLE_PROJECT_ID_HERE",
+  "model": "gemini-2.5-flash"
+}

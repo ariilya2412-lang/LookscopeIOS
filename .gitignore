@@ -4,3 +4,5 @@ DerivedData/
 *.xcworkspace/xcuserdata/
 *.xcodeproj/xcuserdata/
 .DS_Store
+relay/server_config.json
+relay/__pycache__/

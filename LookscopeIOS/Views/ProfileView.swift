@@ -25,10 +25,10 @@ struct ProfileView: View {
 
     private var settingsCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Gemini settings")
+            Text("AI relay settings")
                 .font(.headline)
 
-            SecureField("Gemini API key", text: $viewModel.apiKey)
+            TextField("Relay URL", text: $viewModel.relayURL)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
                 .padding()
@@ -40,8 +40,12 @@ struct ProfileView: View {
                 .padding()
                 .background(Color.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
 
-            Text("The app sends selected photos directly to Gemini generateContent with inline image parts. For a production app, move the key to your own backend.")
+            Text("The app sends selected photos to your own PC relay. The relay holds the Gemini key and talks to Gemini for the phone, so the key is not baked into the IPA.")
                 .font(.caption)
+                .foregroundStyle(.secondary)
+
+            Text("Example: http://192.168.0.15:8787")
+                .font(.caption2)
                 .foregroundStyle(.secondary)
         }
         .padding(18)

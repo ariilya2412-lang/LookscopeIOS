@@ -19,7 +19,7 @@ final class AnalysisViewModel: ObservableObject {
     @Published var isAnalyzing = false
     @Published var importError: String?
 
-    @AppStorage("lookscope.api.key") var apiKey = ""
+    @AppStorage("lookscope.relay.url") var relayURL = "http://127.0.0.1:8787"
     @AppStorage("lookscope.gemini.model") var model = "gemini-2.5-flash"
 
     private let importer = PhotoImportService()
@@ -103,19 +103,19 @@ final class AnalysisViewModel: ObservableObject {
         defer { isAnalyzing = false }
 
         do {
-            if apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            if relayURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 let fallback = makeFallbackReport()
                 apply(report: fallback)
-                status = "AI key is missing, so a local premium fallback report was generated."
+                status = "Relay URL is missing, so a local premium fallback report was generated."
             } else {
-                let remoteReport = try await gemini.analyze(photos: photos, apiKey: apiKey, model: model)
+                let remoteReport = try await gemini.analyze(photos: photos, relayURL: relayURL, model: model)
                 apply(report: remoteReport)
-                status = "AI report is ready."
+                status = "AI report is ready from your PC relay."
             }
         } catch {
             let fallback = makeFallbackReport()
             apply(report: fallback)
-            status = "AI request failed, so a local fallback report was generated."
+            status = "Relay request failed, so a local fallback report was generated."
             importError = error.localizedDescription
         }
     }
@@ -144,7 +144,7 @@ final class AnalysisViewModel: ObservableObject {
         return AnalysisReport(
             overallScore: overall,
             summaryLabel: "Multi-photo premium read",
-            scoreContext: "Built from local face scan across \(photos.count) photos. Add your Gemini API key for full AI commentary.",
+            scoreContext: "Built from local face scan across \(photos.count) photos. Add your PC relay URL for full AI commentary.",
             strengths: [
                 "The app reviews several photos together instead of relying on one angle.",
                 "Local Vision scan found an average of \(landmarksAverage) landmark points per image.",
@@ -158,7 +158,7 @@ final class AnalysisViewModel: ObservableObject {
             suggestions: [
                 Suggestion(title: "Keep 3 to 6 clean photos", reason: "A short set with front, 3/4, and profile angles gives the strongest combined read."),
                 Suggestion(title: "Use one neutral background", reason: "Cleaner backgrounds make the report feel more premium and reduce noise."),
-                Suggestion(title: "Add your Gemini API key in Profile", reason: "That unlocks the full AI written analysis inside the app.")
+                Suggestion(title: "Start the PC relay and add its URL in Profile", reason: "That unlocks the full AI written analysis without exposing the secret in the IPA.")
             ],
             sourceCount: photos.count,
             usedAI: false

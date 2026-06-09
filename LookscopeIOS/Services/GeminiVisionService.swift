@@ -1,18 +1,21 @@
 import Foundation
 
 enum GeminiVisionError: LocalizedError {
-    case missingAPIKey
+    case missingRelayURL
+    case invalidRelayURL
     case invalidResponse
-    case emptyReply
+    case serverError(String)
 
     var errorDescription: String? {
         switch self {
-        case .missingAPIKey:
-            return "Add your Gemini API key in Profile before running AI analysis."
+        case .missingRelayURL:
+            return "Add your PC relay URL in Profile before running AI analysis."
+        case .invalidRelayURL:
+            return "The relay URL is invalid."
         case .invalidResponse:
-            return "Gemini returned an invalid response."
-        case .emptyReply:
-            return "Gemini returned an empty reply."
+            return "The relay server returned an invalid response."
+        case .serverError(let message):
+            return message
         }
     }
 }
@@ -22,73 +25,45 @@ struct GeminiVisionService {
 
     func analyze(
         photos: [AnalysisPhoto],
-        apiKey: String,
+        relayURL: String,
         model: String
     ) async throws -> AnalysisReport {
-        guard !apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            throw GeminiVisionError.missingAPIKey
+        let trimmedURL = relayURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedURL.isEmpty else {
+            throw GeminiVisionError.missingRelayURL
         }
 
-        let prompt = """
-        You are a premium appearance analysis assistant for a private iPhone app.
-        Review all provided photos together as one person. Do not guess protected traits, health issues, ethnicity, religion, sexuality, disability, or exact age.
-        Focus on camera presentation, visual harmony, grooming, style potential, and image quality.
-        Return JSON only with this exact schema:
-        {
-          "overallScore": number,
-          "summaryLabel": string,
-          "scoreContext": string,
-          "strengths": [string],
-          "categoryScores": [{"category": string, "score": number, "note": string}],
-          "suggestions": [{"title": string, "reason": string}]
-        }
-        Keep it concise, premium, and useful.
-        """
-
-        var parts: [[String: Any]] = [
-            ["text": prompt]
-        ]
-
-        for photo in photos {
-            parts.append([
-                "inline_data": [
-                    "mime_type": "image/jpeg",
-                    "data": photo.jpegData.base64EncodedString()
-                ]
-            ])
+        guard let url = URL(string: trimmedURL + "/analyze") else {
+            throw GeminiVisionError.invalidRelayURL
         }
 
-        let body: [String: Any] = [
-            "contents": [[
-                "parts": parts
-            ]],
-            "generationConfig": [
-                "responseMimeType": "application/json"
-            ]
-        ]
+        let body = RelayAnalyzeRequest(
+            model: model,
+            photos: photos.map {
+                RelayPhotoPayload(
+                    label: $0.sourceLabel,
+                    jpegBase64: $0.jpegData.base64EncodedString()
+                )
+            }
+        )
 
-        let url = URL(string: "https://generativelanguage.googleapis.com/v1beta/models/\(model):generateContent")!
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.addValue(apiKey, forHTTPHeaderField: "x-goog-api-key")
-        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        request.timeoutInterval = 180
+        request.httpBody = try JSONEncoder().encode(body)
 
-        let (data, _) = try await session.data(for: request)
-        let response = try JSONDecoder().decode(GeminiResponse.self, from: data)
-
-        guard
-            let text = response.candidates.first?.content.parts.first?.text,
-            !text.isEmpty
-        else {
-            throw GeminiVisionError.emptyReply
-        }
-
-        guard let jsonData = text.data(using: .utf8) else {
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse else {
             throw GeminiVisionError.invalidResponse
         }
 
-        let decoded = try JSONDecoder().decode(AIReportPayload.self, from: jsonData)
+        if !(200...299).contains(http.statusCode) {
+            let relayError = try? JSONDecoder().decode(RelayErrorResponse.self, from: data)
+            throw GeminiVisionError.serverError(relayError?.error ?? "Relay server error \(http.statusCode).")
+        }
+
+        let decoded = try JSONDecoder().decode(RelayAnalyzeResponse.self, from: data)
         return AnalysisReport(
             overallScore: decoded.overallScore,
             summaryLabel: decoded.summaryLabel,
@@ -102,7 +77,17 @@ struct GeminiVisionService {
     }
 }
 
-private struct AIReportPayload: Codable {
+private struct RelayAnalyzeRequest: Codable {
+    let model: String
+    let photos: [RelayPhotoPayload]
+}
+
+private struct RelayPhotoPayload: Codable {
+    let label: String
+    let jpegBase64: String
+}
+
+private struct RelayAnalyzeResponse: Codable {
     let overallScore: Double
     let summaryLabel: String
     let scoreContext: String
@@ -111,18 +96,6 @@ private struct AIReportPayload: Codable {
     let suggestions: [Suggestion]
 }
 
-private struct GeminiResponse: Codable {
-    let candidates: [GeminiCandidate]
-}
-
-private struct GeminiCandidate: Codable {
-    let content: GeminiContent
-}
-
-private struct GeminiContent: Codable {
-    let parts: [GeminiPart]
-}
-
-private struct GeminiPart: Codable {
-    let text: String?
+private struct RelayErrorResponse: Codable {
+    let error: String
 }
